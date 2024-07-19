@@ -1,6 +1,9 @@
 import requests
 from colorama import Fore, Style, init
 import json
+import time
+
+init(autoreset=True)
 
 init(autoreset=True)
 
@@ -165,8 +168,16 @@ if token:
     check_assets(token)
 
 if token:
+    start_time = time.time()
     waiting_for_reward_displayed = False
     while True:
+        current_time = time.time()
+        if current_time - start_time >= 480:  # 8 menit = 480 detik
+            token = login()
+            if token:
+                check_assets(token)
+            start_time = current_time
+        
         reward_claimed = False
         payload_scene_info = {
             'token': token
