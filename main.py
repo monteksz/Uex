@@ -1,9 +1,6 @@
 import requests
 from colorama import Fore, Style, init
 import json
-import time
-
-init(autoreset=True)
 
 init(autoreset=True)
 
@@ -87,9 +84,9 @@ def check_assets(token):
     if response_assets.status_code == 200:
         data_assets = response_assets.json()
         if data_assets['code'] == 0:
-            ue_amount = data_assets['data']['ue']['amount']
-            usdt_amount = data_assets['data']['usdt']['amount']
-            diamond_amount = data_assets['data']['diamond']['amount']
+            ue_amount = data_assets['data'].get('ue', {}).get('amount', 0)
+            usdt_amount = data_assets['data'].get('usdt', {}).get('amount', 0)
+            diamond_amount = data_assets['data'].get('diamond', {}).get('amount', 0)
             
             return ue_amount, usdt_amount, diamond_amount
         else:
@@ -168,16 +165,8 @@ if token:
     check_assets(token)
 
 if token:
-    start_time = time.time()
     waiting_for_reward_displayed = False
     while True:
-        current_time = time.time()
-        if current_time - start_time >= 480:  # 8 menit = 480 detik
-            token = login()
-            if token:
-                check_assets(token)
-            start_time = current_time
-        
         reward_claimed = False
         payload_scene_info = {
             'token': token
