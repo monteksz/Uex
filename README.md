@@ -1,4 +1,4 @@
-<h1 align="center">Auto Reff Pixelverse ( DWYOR )</h1>
+<h1 align="center">Auto Claim UEX ( DWYOR )</h1>
 
 <img align="center" src="https://github.com/user-attachments/assets/68652142-4b90-41f4-a0bc-ebabbd71bd4b">
 
