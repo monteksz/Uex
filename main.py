@@ -1,6 +1,8 @@
 import requests
 from colorama import Fore, Style, init
 import json
+import time
+import threading
 
 init(autoreset=True)
 
@@ -31,10 +33,7 @@ def nama():
 
 nama()
 
-def login():
-    with open('akun.txt', 'r') as file:
-        init_data = file.read().strip()
-
+def login(init_data, account_number):
     payload_login = {
         'init_data': init_data,
         'referrer': ''
@@ -47,15 +46,15 @@ def login():
         data_login = response_login.json()
         if data_login['code'] == 0 and 'token' in data_login['data'] and 'token' in data_login['data']['token']:
             token = data_login['data']['token']['token']
-            print(Fore.GREEN + 'Token Berhasil di Dapatkan: ' + token + Style.RESET_ALL)
+            print(Fore.GREEN + f'[Akun Ke-{account_number}] Token Berhasil di Dapatkan: ' + token + Style.RESET_ALL)
             return token
         else:
-            print(Fore.RED + 'Login Gagal: Token tidak ditemukan.' + Style.RESET_ALL)
+            print(Fore.RED + f'[Akun Ke-{account_number}] Login Gagal: Token tidak ditemukan.' + Style.RESET_ALL)
     else:
-        print(Fore.RED + f'Permintaan Gagal dengan Status Kode: {response_login.status_code}' + Style.RESET_ALL)
+        print(Fore.RED + f'[Akun Ke-{account_number}] Permintaan Gagal dengan Status Kode: {response_login.status_code}' + Style.RESET_ALL)
     return None
 
-def check_assets(token):
+def check_assets(token, account_number):
     payload_assets = {
         'token': token
     }
@@ -90,12 +89,12 @@ def check_assets(token):
             
             return ue_amount, usdt_amount, diamond_amount
         else:
-            print(Fore.RED + 'Gagal mendapatkan data aset: ' + data_assets.get('message', 'Tidak diketahui') + Style.RESET_ALL)
+            print(Fore.RED + f'[Akun Ke-{account_number}] Gagal mendapatkan data aset: ' + data_assets.get('message', 'Tidak diketahui') + Style.RESET_ALL)
     else:
-        print(Fore.RED + f'Permintaan Gagal dengan Status Kode: {response_assets.status_code}' + Style.RESET_ALL)
+        print(Fore.RED + f'[Akun Ke-{account_number}] Permintaan Gagal dengan Status Kode: {response_assets.status_code}' + Style.RESET_ALL)
     return None, None, None
 
-def check_drops(token):
+def check_drops(token, account_number):
     payload_scene_info = {
         'token': token
     }
@@ -116,16 +115,16 @@ def check_drops(token):
                 if scene['eggs'] is not None:
                     for egg in scene['eggs']:
                         if egg['flag'] == 0:
-                            claim_drop(token, egg)
+                            claim_drop(token, egg, account_number)
                             reward_claimed = True
             if not reward_claimed:
-                print(Fore.CYAN + 'Waiting For Reward...' + Style.RESET_ALL)
+                print(Fore.CYAN + f'[Akun Ke-{account_number}] Waiting For Reward...' + Style.RESET_ALL)
         else:
-            print(Fore.RED + 'Gagal mendapatkan data scene info: ' + data_scene_info.get('message', 'Tidak diketahui') + Style.RESET_ALL)
+            print(Fore.RED + f'[Akun Ke-{account_number}] Gagal mendapatkan data scene info: ' + data_scene_info.get('message', 'Tidak diketahui') + Style.RESET_ALL)
     else:
-        print(Fore.RED + f'Permintaan Gagal dengan Status Kode: {response_scene_info.status_code}' + Style.RESET_ALL)
+        print(Fore.RED + f'[Akun Ke-{account_number}] Permintaan Gagal dengan Status Kode: {response_scene_info.status_code}' + Style.RESET_ALL)
 
-def claim_drop(token, egg):
+def claim_drop(token, egg, account_number):
     payload_egg_reward = {
         'token': token,
         'egg_uid': egg['uid']
@@ -143,58 +142,81 @@ def claim_drop(token, egg):
         data_egg_reward = response_egg_reward.json()
         if data_egg_reward['code'] == 0:
             if egg['a_type'] == 'ue':
-                print(Fore.YELLOW + f'UE Reward Berhasil Diklaim ({egg["amount"]})', end='')
+                print(Fore.YELLOW + f'[Akun Ke-{account_number}] UE Reward Berhasil Diklaim ({egg["amount"]})', end='')
             elif egg['a_type'] == 'usdt':
-                print(Fore.GREEN + f'USDT Reward Berhasil Diklaim ({egg["amount"]})', end='')
+                print(Fore.GREEN + f'[Akun Ke-{account_number}] USDT Reward Berhasil Diklaim ({egg["amount"]})', end='')
             
-            ue_amount, usdt_amount, diamond_amount = check_assets(token)  # Dapatkan saldo terbaru setelah klaim
+            ue_amount, usdt_amount, diamond_amount = check_assets(token, account_number)  # Dapatkan saldo terbaru setelah klaim
             print(Fore.MAGENTA + f' | Saldo Terbaru' + Style.RESET_ALL + 
                   Fore.YELLOW + f' UE: {ue_amount}' + Style.RESET_ALL + ' | ' + 
                   Fore.GREEN + f'USDT: {usdt_amount}' + Style.RESET_ALL + ' | ' + 
                   Fore.BLUE + f'Diamond: {diamond_amount}' + Style.RESET_ALL)
         else:
-            print(Fore.RED + 'Gagal mengklaim egg reward: ' + data_egg_reward.get('message', 'Tidak diketahui') + Style.RESET_ALL)
+            print(Fore.RED + f'[Akun Ke-{account_number}] Gagal mengklaim egg reward: ' + data_egg_reward.get('message', 'Tidak diketahui') + Style.RESET_ALL)
             print("Response data:", data_egg_reward)
     else:
-        print(Fore.RED + f'Permintaan Gagal dengan Status Kode: {response_egg_reward.status_code}' + Style.RESET_ALL)
+        print(Fore.RED + f'[Akun Ke-{account_number}] Permintaan Gagal dengan Status Kode: {response_egg_reward.status_code}' + Style.RESET_ALL)
         print("Response text:", response_egg_reward.text)
 
-token = login()
+def process_account(init_data, account_number):
+    token = login(init_data, account_number)
+    if token:
+        check_assets(token, account_number)
 
-if token:
-    check_assets(token)
-
-if token:
-    waiting_for_reward_displayed = False
-    while True:
-        reward_claimed = False
-        payload_scene_info = {
-            'token': token
-        }
-        headers = {
-            'Authorization': f'Bearer {token}',
-            'Accept': 'application/json, text/plain, */*',
-            'Content-Type': 'application/json'
-        }
-        url_scene_info = 'https://zejlgz.com/api/scene/info'
-        
-        response_scene_info = requests.post(url_scene_info, json=payload_scene_info, headers=headers)
-        
-        if response_scene_info.status_code == 200:
-            data_scene_info = response_scene_info.json()
-            if data_scene_info['code'] == 0:
-                for scene in data_scene_info['data']:
-                    if scene['eggs'] is not None:
-                        for egg in scene['eggs']:
-                            if egg['flag'] == 0:
-                                claim_drop(token, egg)
-                                reward_claimed = True
-                                waiting_for_reward_displayed = False  # Reset flag
+    if token:
+        start_time = time.time()
+        waiting_for_reward_displayed = False
+        while True:
+            current_time = time.time()
+            if current_time - start_time >= 480:  # 8 menit = 480 detik
+                token = login(init_data, account_number)
+                if token:
+                    check_assets(token, account_number)
+                start_time = current_time
+            
+            reward_claimed = False
+            payload_scene_info = {
+                'token': token
+            }
+            headers = {
+                'Authorization': f'Bearer {token}',
+                'Accept': 'application/json, text/plain, */*',
+                'Content-Type': 'application/json'
+            }
+            url_scene_info = 'https://zejlgz.com/api/scene/info'
+            
+            response_scene_info = requests.post(url_scene_info, json=payload_scene_info, headers=headers)
+            
+            if response_scene_info.status_code == 200:
+                data_scene_info = response_scene_info.json()
+                if data_scene_info['code'] == 0:
+                    for scene in data_scene_info['data']:
+                        if scene['eggs'] is not None:
+                            for egg in scene['eggs']:
+                                if egg['flag'] == 0:
+                                    claim_drop(token, egg, account_number)
+                                    reward_claimed = True
+                                    waiting_for_reward_displayed = False  # Reset flag
+                else:
+                    print(Fore.RED + f'[Akun Ke-{account_number}] Gagal mendapatkan data scene info: ' + data_scene_info.get('message', 'Tidak diketahui') + Style.RESET_ALL)
             else:
-                print(Fore.RED + 'Gagal mendapatkan data scene info: ' + data_scene_info.get('message', 'Tidak diketahui') + Style.RESET_ALL)
-        else:
-            print(Fore.RED + f'Permintaan Gagal dengan Status Kode: {response_scene_info.status_code}' + Style.RESET_ALL)
+                print(Fore.RED + f'[Akun Ke-{account_number}] Permintaan Gagal dengan Status Kode: {response_scene_info.status_code}' + Style.RESET_ALL)
 
-        if not reward_claimed and not waiting_for_reward_displayed:
-            print(Fore.CYAN + 'Waiting For Reward...' + Style.RESET_ALL)
-            waiting_for_reward_displayed = True
+            if not reward_claimed and not waiting_for_reward_displayed:
+                print(Fore.CYAN + f'[Akun Ke-{account_number}] Waiting For Reward...' + Style.RESET_ALL)
+                waiting_for_reward_displayed = True
+
+if __name__ == "__main__":
+    with open('akun.txt', 'r') as file:
+        accounts = file.readlines()
+
+    threads = []
+    for index, account in enumerate(accounts):
+        account = account.strip()
+        if account:
+            thread = threading.Thread(target=process_account, args=(account, index + 1))
+            threads.append(thread)
+            thread.start()
+
+    for thread in threads:
+        thread.join()
